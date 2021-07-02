@@ -170,11 +170,8 @@
                                                    (let [string (buffer->str data)]
                                                      (try
                                                        (let [{:keys [event-id data] :as event} (edn/read-string string)]
-                                                         (println "Handling event" event-id)
                                                          (case event-id
-                                                           :active-builds (do
-                                                                            (reset! active-builds data)
-                                                                            (println "active-builds:" data))
+                                                           :active-builds (reset! active-builds data)
                                                            :flush         (let [build-id data]
                                                                             (when-let [resolve-fn (get @build-id->resolve build-id)]
                                                                               (println "Delivering compile result")
@@ -186,7 +183,7 @@
                                                                               (when (and (not (get @build-id->rerun build-id))
                                                                                          (not (get @build-id->resolve build-id))
                                                                                          (contains? @active-builds build-id))
-                                                                                (println "flush when no resolve present or rerun needed and shadow-cljs is watching" build-id ", triggering rerun to reload compilation result")
+                                                                                (println "Switching to cljs repl")
                                                                                 (reset! deliver-now true)
                                                                                 (.emit ^js file "rerun")))
                                                                             (swap! build-id->resolve dissoc build-id)
@@ -196,10 +193,7 @@
                                                        (catch :default _
                                                          (println "Failed to parse control message:" string))))))
                                    (.write s "(require '[watch :as watch])\n (future (try (loop [] (println {:event-id :flush :data (.take watch/flush-queue)}) (recur)) (catch Throwable t (println {:event-id :error :data :flush-queue-read}))))\n")
-                                   (reset! build-poller (js/setInterval #(do
-                                                                           (.write s "(println {:event-id :active-builds :data (shadow/active-builds)})\n")
-                                                                           (println "build-id->resolve:" @build-id->resolve)
-                                                                           (println "build-id->rerun:" @build-id->rerun))
+                                   (reset! build-poller (js/setInterval #(.write s "(println {:event-id :active-builds :data (shadow/active-builds)})\n")
                                                                         1000))
                                    (reset! socket s))))
       ;; TODO: Option for compiling all tests at start
@@ -267,7 +261,7 @@
                                  (swap! build-id->resolve assoc build-id #(resolve-fn compiled-file))
                                  (let [compile-fn (fn []
                                                     (if (contains? @active-builds build-id)
-                                                      (println "shadow-cljs watch active, skipping compile")
+                                                      (println "Shadow-cljs watch active, skipping compile")
                                                       (do
                                                         (println "Compiling" filePath)
                                                         (compile [(name build-id)]))))]
