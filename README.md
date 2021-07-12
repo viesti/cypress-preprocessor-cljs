@@ -76,6 +76,50 @@ The shadow-cljs server is kept running while the Cypress runner is active. When 
    $ ./node_modules/.bin/cypress open
    ```
 
+## REPL in Cypress
+
+You can active REPL into a test in the browser that Cypress is controlling.
+
+1. Lookup NREPL port used by the shadow-cljs server
+
+   ```
+   $ cat .preprocessor-cljs/.shadow-cljs/nrepl.port
+   50796
+   ```
+
+2. Connect to the NREPL server and start shadow-cljs watch
+
+   ```
+   shadow.user> (shadow/watch :window)
+   ```
+
+   The build-id is a keyword of the test file name
+
+3. Start a ClojureScript repl
+
+   ```
+   shadow.user> (shadow/repl :window)
+   To quit, type: :cljs/quit
+   [:selected :window]
+   cljs.user> (js/alert "plop") ;; To try out that it works
+   ```
+
+Now you can use the slightly undocumented `now` command to execute Cypress command immediately, for example, to select an option:
+
+```
+cljs.user> (-> (.now js/cy "get" "#some-opt")
+               (.then (fn [el]
+                        (.now js/cy "select" el "two"))))
+#object[Promise [object Promise]]
+```
+
+Some references to the `now` command:
+
+* https://github.com/cypress-io/cypress/issues/6080#issuecomment-570481923
+* https://docs.cypress.io/guides/guides/debugging#Run-Cypress-command-outside-the-test
+* https://github.com/cypress-io/cypress/issues/8195
+* https://github.com/cypress-io/cypress/issues/3636#issuecomment-511315778
+
 ## Configuration
 
 ### Shadow CLJS configuration override
